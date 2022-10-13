@@ -21,7 +21,21 @@ function prompt_char {
 }
 
 function virtualenv_info {
-    [ $VIRTUAL_ENV ] && echo '('`basename $VIRTUAL_ENV`') '
+    #[ $VIRTUAL_ENV ] && echo "\n["`basename $VIRTUAL_ENV`"]"
+    [ $VIRTUAL_ENV ] && echo "\n[$VIRTUAL_ENV]"
+}
+
+function conda_info {
+    if [[ -n $CONDA_DEFAULT_ENV ]]
+    then
+        #if [[ $CONDA_DEFAULT_ENV == *"/"* ]]
+        #then
+        #    echo "\n(dir:$CONDA_DEFAULT_ENV)"
+        #else
+        #    echo "\n($CONDA_DEFAULT_ENV)"
+        #fi
+        echo "\n($CONDA_DEFAULT_ENV)"
+    fi
 }
 
 #function hg_prompt_info {
@@ -46,9 +60,9 @@ function current_date {
 }
 
 PROMPT='
-%{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]
-%{$fg_bold[black]%}$(collapse_pwd)%{$reset_color%}$(hg_prompt_info)$(git_prompt_info)
-$(virtualenv_info)$(prompt_char) '
+%{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]$(hg_prompt_info)$(git_prompt_info)$(virtualenv_info)$(conda_info)
+%{$fg_bold[black]%}$(collapse_pwd)%{$reset_color%}
+$(prompt_char) '
 
 RPROMPT=""
 
