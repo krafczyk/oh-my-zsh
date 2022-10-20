@@ -1,14 +1,48 @@
 #!/usr/bin/env zsh 
 
-ROOT_ICON_COLOR=$FG[111]
-MACHINE_NAME_COLOR=$FG[208]
-PROMPT_SUCCESS_COLOR=$FG[103]
-PROMPT_FAILURE_COLOR=$FG[124]
-PROMPT_VCS_INFO_COLOR=$FG[242]
-PROMPT_PROMPT=$FG[208]
-GIT_DIRTY_COLOR=$FG[124]
-GIT_CLEAN_COLOR=$FG[148]
-GIT_PROMPT_INFO=$FG[148]
+#PROMPT_SUCCESS_COLOR=$FG[103]
+#PROMPT_FAILURE_COLOR=$FG[124]
+RED_COLOR=$FG[124]
+#VCS_CLEAN_COLOR=$FG[148]
+
+MSK_THEME_START_TIME=""
+MSK_THEME_END_TIME=""
+MSK_THEME_MIN_DT=10
+
+function unixtime {
+    echo $(date +%s)
+}
+
+function msk_precmd {
+    MSK_THEME_END_TIME=$(unixtime)
+    vcs_info
+}
+
+add-zsh-hook precmd msk_precmd
+
+function msk_preexec {
+    MSK_THEME_START_TIME=$(unixtime)
+}
+
+add-zsh-hook preexec msk_preexec
+
+# Set up vcs info style
+zstyle ':vcs_info:*' enable git bzr svn hg
+
+zstyle ':vcs_info:*' check-for-changes true
+zstyle ':vcs_info:*' unstagedstr "$RED_COLOR✘${reset_color}"   # display this when there are unstaged changes
+zstyle ':vcs_info:*' stagedstr "%F{yellow}✔${reset_color}"  # display this when there are staged changes
+zstyle ':vcs_info:*' actionformats "%s 📂%r%F{yellow}│${reset_color}%S %F{magenta}%b${reset_color} [$RED_COLOR%a${reset_color}] %c%u%m"
+zstyle ':vcs_info:*' formats "%s 📂%r%F{yellow}│${reset_color}%S %F{magenta}%b${reset_color} %c%u%m"
+zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
+
++vi-untracked-git() {
+  if command git status --porcelain 2>/dev/null | command grep -q '??'; then
+    hook_com[misc]="%F{red}?${reset_color}"
+  else
+    hook_com[misc]=''
+  fi
+}
 
 function collapse_pwd {
     echo $(pwd | sed -e "s,^$HOME,~,")
@@ -20,6 +54,49 @@ function prompt_char {
     echo '○'
 }
 
+function prev_cmd_time_info {
+    if [[ -n ${MSK_THEME_START_TIME} ]] && [[ -n ${MSK_THEME_END_TIME} ]]
+    then
+        dt=$(($MSK_THEME_END_TIME-$MSK_THEME_START_TIME))
+        if (( $dt >= $MSK_THEME_MIN_DT ))
+        then
+            days=$(($dt/86400))
+            if [[ $days > 0 ]]
+            then
+                dt=$(($dt-$days*86400))
+                hrs=$(($dt/3600))
+                dt=$(($dt-$hrs*3600))
+                mins=$(($dt/60))
+                dt=$(($dt-$mins*60))
+                secs=$dt
+                MSK_THEME_DT="${days}d ${hrs}h ${mins}m ${secs}s"
+            else
+            hrs=$(($dt/3600))
+            if [[ $hrs > 0 ]]
+            then
+                dt=$(($dt-$hrs*3600))
+                mins=$(($dt/60))
+                dt=$(($dt-$mins*60))
+                secs=$dt
+                MSK_THEME_DT="${hrs}h ${mins}m ${secs}s"
+            else
+            mins=$(($dt/60))
+            if [[ $mins > 0 ]]
+            then
+                dt=$(($dt-$mins*60))
+                secs=$dt
+                MSK_THEME_DT="${mins}m ${secs}s"
+            else
+                MSK_THEME_DT="${dt}s"
+            fi
+            fi
+            fi
+            echo "%{$fg[green]%}§%{$reset_color%} Command took %{$fg[green]%}$MSK_THEME_DT%{$reset_color%}\n "
+        fi
+    else
+    fi
+}
+
 function virtualenv_info {
     #[ $VIRTUAL_ENV ] && echo "\n["`basename $VIRTUAL_ENV`"]"
     [ $VIRTUAL_ENV ] && echo "\n[$VIRTUAL_ENV]"
@@ -28,64 +105,26 @@ function virtualenv_info {
 function conda_info {
     if [[ -n $CONDA_DEFAULT_ENV ]]
     then
-        #if [[ $CONDA_DEFAULT_ENV == *"/"* ]]
-        #then
-        #    echo "\n(dir:$CONDA_DEFAULT_ENV)"
-        #else
-        #    echo "\n($CONDA_DEFAULT_ENV)"
-        #fi
-        echo "\n($CONDA_DEFAULT_ENV)"
+        if [[ $CONDA_DEFAULT_ENV == *"/"* ]]
+        then
+            echo "\n(📂 $CONDA_DEFAULT_ENV)"
+        else
+            echo "\n($CONDA_DEFAULT_ENV)"
+        fi
     fi
 }
 
-#function hg_prompt_info {
-#    hg prompt --angle-brackets "\
-#< on %{$fg[magenta]%}<branch>%{$reset_color%}>\
-#< at %{$fg[yellow]%}<tags|%{$reset_color%}, %{$fg[yellow]%}>%{$reset_color%}>\
-#%{$fg[green]%}<status|modified|unknown><update>%{$reset_color%}<
-#patches: <patches|join( → )|pre_applied(%{$fg[yellow]%})|post_applied(%{$reset_color%})|pre_unapplied(%{$fg_bold[black]%})|post_unapplied(%{$reset_color%})>>" 2>/dev/null
-#}
-
-function hg_prompt_info {
-    hg prompt --angle-brackets "\
-< on %{$fg[magenta]%}<branch>%{$reset_color%}>\
-< at %{$fg[yellow]%}<tags|%{$reset_color%}, %{$fg[yellow]%}>%{$reset_color%}>\
-%{$fg[green]%}<status|modified|unknown><update>%{$reset_color%}\
-< 📑  %{$fg[cyan]%}<bookmark>%{$reset_color%} >\
-<patches: <patches|join( → )|pre_applied(%{$fg[yellow]%})|post_applied(%{$reset_color%})|pre_unapplied(%{$fg_bold[black]%})|post_unapplied(%{$reset_color%})>>" 2>/dev/null
-}
-
 function current_date {
-	echo $(date +%T)
+    echo $(date +%T)
 }
 
-PROMPT='
-%{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]$(hg_prompt_info)$(git_prompt_info)$(virtualenv_info)$(conda_info)
+function msk_vcs_info {
+    echo "\n${vcs_info_msg_0_}"
+}
+
+PROMPT='$(prev_cmd_time_info)
+%{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]$(msk_vcs_info)$(virtualenv_info)$(conda_info)
 %{$fg_bold[black]%}$(collapse_pwd)%{$reset_color%}
-$(prompt_char) '
+❯ '
 
 RPROMPT=""
-
-ZSH_THEME_GIT_PROMPT_PREFIX="
-git %{$fg[magenta]%}"
-ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
-#ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[green]%}!"
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[green]%}?"
-#ZSH_THEME_GIT_PROMPT_CLEAN=""
-
-#ZSH_THEME_GIT_PROMPT_PREFIX=": "
-#ZSH_THEME_GIT_PROMPT_SUFFIX="%{$GIT_PROMPT_INFO%} :"
-ZSH_THEME_GIT_PROMPT_DIRTY=" %{$GIT_DIRTY_COLOR%}✘"
-ZSH_THEME_GIT_PROMPT_CLEAN=" %{$GIT_CLEAN_COLOR%}✔"
-
-ZSH_THEME_GIT_PROMPT_ADDED="%{$FG[103]%}✚%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_MODIFIED="%{$FG[103]%}✹%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_DELETED="%{$FG[103]%}✖%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_RENAMED="%{$FG[103]%}➜%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_UNMERGED="%{$FG[103]%}═%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$FG[103]%}✭%{$reset_color%}"
-
-
-
-#PROMPT="╭─%{$FG[040]%}%n%{$reset_color%} %{$FG[239]%}at%{$reset_color%} %{$FG[033]%}$(box_name)%{$reset_color%} %{$FG[239]%}in%{$reset_color%} %{$terminfo[bold]$FG[226]%}${current_dir}%{$reset_color%}${git_info} %{$FG[239]%}using%{$FG[243]%}${ruby_env}
-#╰─${prompt_char} "
