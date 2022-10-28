@@ -122,6 +122,6 @@ function msk_vcs_info {
 PROMPT='$(prev_cmd_time_info)
 %{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]$(msk_vcs_info)$(virtualenv_info)$(conda_info)
 %{$fg_bold[black]%}$(collapse_pwd)%{$reset_color%}
-❯ '
+%{$fg_bold[black]%}❯%{$reset_color%} '
 
 RPROMPT=""
