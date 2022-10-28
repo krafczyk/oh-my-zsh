@@ -8,6 +8,7 @@ RED_COLOR=$FG[124]
 MSK_THEME_START_TIME=""
 MSK_THEME_END_TIME=""
 MSK_THEME_MIN_DT=10
+MSK_THEME_TIME_COUNT=0
 
 function unixtime {
     echo $(date +%s)
@@ -16,12 +17,14 @@ function unixtime {
 function msk_precmd {
     MSK_THEME_END_TIME=$(unixtime)
     vcs_info
+    MSK_THEME_TIME_COUNT=$(($MSK_THEME_TIME_COUNT+1))
 }
 
 add-zsh-hook precmd msk_precmd
 
 function msk_preexec {
     MSK_THEME_START_TIME=$(unixtime)
+    MSK_THEME_TIME_COUNT=0
 }
 
 add-zsh-hook preexec msk_preexec
@@ -48,14 +51,8 @@ function collapse_pwd {
     echo $(pwd | sed -e "s,^$HOME,~,")
 }
 
-function prompt_char {
-    git branch >/dev/null 2>/dev/null && echo '±' && return
-    hg root >/dev/null 2>/dev/null && echo '☿' && return
-    echo '○'
-}
-
 function prev_cmd_time_info {
-    if [[ -n ${MSK_THEME_START_TIME} ]] && [[ -n ${MSK_THEME_END_TIME} ]]
+    if [[ -n ${MSK_THEME_START_TIME} ]] && [[ -n ${MSK_THEME_END_TIME} ]] && [[ ${MSK_THEME_TIME_COUNT} -eq 1 ]]
     then
         dt=$(($MSK_THEME_END_TIME-$MSK_THEME_START_TIME))
         if (( $dt >= $MSK_THEME_MIN_DT ))
