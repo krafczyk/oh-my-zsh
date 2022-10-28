@@ -47,6 +47,23 @@ zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
   fi
 }
 
+function zle-keymap-select {
+    if [[ ${KEYMAP} == vicmd ]] ||
+       [[ $1 = 'block' ]]; then
+        echo -ne '\e[1 q'
+    elif [[ ${KEYMAP} == main ]] ||
+         [[ ${KEYMAP} == viins ]] ||
+         [[ ${KEYMAP} == '' ]] ||
+         [[ ${KEYMAP} == 'underline' ]]; then
+        echo -ne '\e[3 q'
+    fi
+}
+zle -N zle-keymap-select
+function zle-line-init {
+    echo -ne '\e[3 q'
+}
+zle -N zle-line-init
+
 function collapse_pwd {
     echo $(pwd | sed -e "s,^$HOME,~,")
 }
@@ -123,5 +140,15 @@ PROMPT='$(prev_cmd_time_info)
 %{$fg[red]%}%n%{$reset_color%} on %{$fg[blue]%}%m%{$reset_color%} [%{$fg[green]%}$(current_date)%{$reset_color%}]$(msk_vcs_info)$(virtualenv_info)$(conda_info)
 %{$fg_bold[black]%}$(collapse_pwd)%{$reset_color%}
 %{$fg_bold[black]%}❯%{$reset_color%} '
+
+# In the future, I may want to change the cursor style. It's called 'DECSCUSR'.
+# set it like this: echo -ne '\e[5 q' and replace the 5 with 
+# 0 - blinking block
+# 1 - blinking block (default)
+# 2 - steady block
+# 3 - blinking underline
+# 4 - steady underline
+# 5 - blinking bar, xterm
+# 6 - steady bar, xterm
 
 RPROMPT=""
