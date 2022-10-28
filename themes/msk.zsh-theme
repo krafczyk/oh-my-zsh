@@ -112,7 +112,7 @@ function conda_info {
 }
 
 function current_date {
-    echo $(date +%T)
+    echo $(date +"%a %b %d %T")
 }
 
 function msk_vcs_info {
