@@ -48,6 +48,10 @@ zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
 }
 
 function zle-keymap-select {
+    # Skip DECSCUSR if TERM is "linux" (as in JuiceSSH)
+    if [[ "$TERM" == "linux" ]]; then
+	return
+    fi
     if [[ ${KEYMAP} == vicmd ]] ||
        [[ $1 = 'block' ]]; then
         echo -ne '\e[1 q'
@@ -60,6 +64,9 @@ function zle-keymap-select {
 }
 zle -N zle-keymap-select
 function zle-line-init {
+    if [[ "$TERM" == "linux" ]]; then
+	return
+    fi
     echo -ne '\e[3 q'
 }
 zle -N zle-line-init
