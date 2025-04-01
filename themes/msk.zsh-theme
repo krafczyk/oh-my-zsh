@@ -71,6 +71,8 @@ function zle-line-init {
 }
 zle -N zle-line-init
 
+zle_highlight=(region:standout special:standout suffix:bold isearch:underline paste:standout)
+
 function collapse_pwd {
     echo $(pwd | sed -e "s,^$HOME,~,")
 }
