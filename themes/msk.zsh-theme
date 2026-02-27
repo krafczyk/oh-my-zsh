@@ -14,10 +14,116 @@ function unixtime {
     echo $(date +%s)
 }
 
+# --- VCS prompt control -------------------------------------------------------
+typeset -g MSK_THEME_VCS_MODE=${MSK_THEME_VCS_MODE:-auto}   # on | off | auto
+typeset -g MSK_THEME_VCS_DETAIL=${MSK_THEME_VCS_DETAIL:-full} # full | light
+typeset -g MSK_THEME_VCS_MIN_INTERVAL=${MSK_THEME_VCS_MIN_INTERVAL:-2}
+typeset -g MSK_THEME_VCS_LAST_TS=0
+typeset -g MSK_THEME_VCS_LAST_PWD=""
+typeset -g MSK_THEME_VCS_STYLE_APPLIED=""
+
+# Best-effort fs type detection (Linux first; falls back to stat)
+function msk_fs_type() {
+  local p="${1:-$PWD}" fs=""
+  if [[ -r /proc/mounts ]]; then
+    fs=$(
+      awk -v p="$p" '
+        BEGIN { best=""; fs="" }
+        {
+          mp=$2; gsub(/\\040/, " ", mp)
+          if (index(p, mp)==1 && length(mp)>length(best)) { best=mp; fs=$3 }
+        }
+        END { print fs }
+      ' /proc/mounts
+    )
+    print -r -- "${fs:-unknown}"
+    return
+  fi
+
+  if command stat -f -c %T . >/dev/null 2>&1; then
+    stat -f -c %T .
+  elif command stat -f %T . >/dev/null 2>&1; then
+    stat -f %T .
+  else
+    print -r -- unknown
+  fi
+}
+
+function msk_is_slow_fs() {
+  local fs="$(msk_fs_type "$PWD")"
+  case "$fs" in
+    nfs*|cifs*|smbfs*|sshfs*|fuse.sshfs*|fuse.*|lustre*|gpfs*|panfs*|afs* ) return 0 ;;
+    * ) return 1 ;;
+  esac
+}
+
+function msk_apply_vcs_styles() {
+  local key="${MSK_THEME_VCS_DETAIL}"
+  [[ "$MSK_THEME_VCS_STYLE_APPLIED" == "$key" ]] && return 0
+  MSK_THEME_VCS_STYLE_APPLIED="$key"
+
+  if [[ "$MSK_THEME_VCS_DETAIL" == light ]]; then
+    zstyle ':vcs_info:*' check-for-changes false
+    zstyle -d ':vcs_info:git*+set-message:*' hooks 2>/dev/null
+  else
+    zstyle ':vcs_info:*' check-for-changes true
+    zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
+  fi
+}
+
+function msk_vcs_enabled() {
+  case "$MSK_THEME_VCS_MODE" in
+    off)  return 1 ;;
+    on)   return 0 ;;
+    auto) msk_is_slow_fs && return 1 || return 0 ;;
+    *)    return 0 ;;
+  esac
+}
+
+# Interactive command: msk_vcs on|off|auto|light|full|toggle
+function msk_vcs() {
+  case "$1" in
+    on|off|auto) MSK_THEME_VCS_MODE="$1" ;;
+    light|full)  MSK_THEME_VCS_DETAIL="$1" ;;
+    toggle)
+      [[ "$MSK_THEME_VCS_MODE" == off ]] && MSK_THEME_VCS_MODE=on || MSK_THEME_VCS_MODE=off
+      ;;
+    *) print -r -- "usage: msk_vcs on|off|auto|light|full|toggle"; return 2 ;;
+  esac
+
+  # Clear stale VCS output when disabling
+  if ! msk_vcs_enabled; then
+    vcs_info_msg_0_=""
+  fi
+
+  # Refresh prompt immediately if we're in ZLE
+  [[ -n "$ZLE" ]] && zle reset-prompt 2>/dev/null
+}
+# Optional convenience aliases
+alias vcs-off='msk_vcs off'
+alias vcs-on='msk_vcs on'
+alias vcs-auto='msk_vcs auto'
+alias vcs-light='msk_vcs light'
+alias vcs-full='msk_vcs full'
+
 function msk_precmd {
-    MSK_THEME_END_TIME=$(unixtime)
-    vcs_info
-    MSK_THEME_TIME_COUNT=$(($MSK_THEME_TIME_COUNT+1))
+  MSK_THEME_END_TIME=$(unixtime)
+  local now=$MSK_THEME_END_TIME
+
+  if msk_vcs_enabled; then
+    msk_apply_vcs_styles
+
+    # Throttle updates + always update on directory change
+    if (( now - MSK_THEME_VCS_LAST_TS >= MSK_THEME_VCS_MIN_INTERVAL )) || [[ "$PWD" != "$MSK_THEME_VCS_LAST_PWD" ]]; then
+      vcs_info
+      MSK_THEME_VCS_LAST_TS=$now
+      MSK_THEME_VCS_LAST_PWD=$PWD
+    fi
+  else
+    vcs_info_msg_0_=""
+  fi
+
+  MSK_THEME_TIME_COUNT=$(($MSK_THEME_TIME_COUNT+1))
 }
 
 add-zsh-hook precmd msk_precmd
@@ -142,7 +248,7 @@ function current_date {
 }
 
 function msk_vcs_info {
-    echo "\n${vcs_info_msg_0_}"
+  [[ -n "${vcs_info_msg_0_}" ]] && echo "\n${vcs_info_msg_0_}"
 }
 
 PROMPT='$(prev_cmd_time_info)
