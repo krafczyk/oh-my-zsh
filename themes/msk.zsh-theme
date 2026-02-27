@@ -2,7 +2,6 @@
 
 #PROMPT_SUCCESS_COLOR=$FG[103]
 #PROMPT_FAILURE_COLOR=$FG[124]
-RED_COLOR=$FG[124]
 #VCS_CLEAN_COLOR=$FG[148]
 
 MSK_THEME_START_TIME=""
@@ -139,15 +138,15 @@ add-zsh-hook preexec msk_preexec
 zstyle ':vcs_info:*' enable git bzr svn hg
 
 zstyle ':vcs_info:*' check-for-changes true
-zstyle ':vcs_info:*' unstagedstr "$RED_COLOR✘${reset_color}"   # display this when there are unstaged changes
-zstyle ':vcs_info:*' stagedstr "%F{yellow}✔${reset_color}"  # display this when there are staged changes
-zstyle ':vcs_info:*' actionformats "%s 📂%r%F{yellow}│${reset_color}%S %F{magenta}%b${reset_color} [$RED_COLOR%a${reset_color}] %c%u%m"
-zstyle ':vcs_info:*' formats "%s 📂%r%F{yellow}│${reset_color}%S %F{magenta}%b${reset_color} %c%u%m"
+zstyle ':vcs_info:*' unstagedstr "%F{124}✘%f" # display this when there are unstaged changes
+zstyle ':vcs_info:*' stagedstr "%F{yellow}✔%f"  # display this when there are staged changes
+zstyle ':vcs_info:*' actionformats '%s 📂%r%F{yellow}│%f%S %F{magenta}%b%f%s %c%u%m'
+zstyle ':vcs_info:*' formats '%s 📂%r%F{yellow}│%f%S %F{magenta}%b%f%s [%F{124}%a%f] %c%u%m'
 zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
 
 +vi-untracked-git() {
   if command git status --porcelain 2>/dev/null | command grep -q '??'; then
-    hook_com[misc]="%F{red}?${reset_color}"
+    hook_com[misc]='%F{red}?%f'
   else
     hook_com[misc]=''
   fi
